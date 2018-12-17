@@ -38,8 +38,8 @@ public class Monitor implements Runnable {
     public void run() {
         try {
             if (rulesReader.isNeedReloadSynonymRules()) {
-                List<String> newRules = rulesReader.reloadSynonymRules();
-                SynonymRuleManager.getSingleton().reloadSynonymRule(newRules);
+                String newRules = rulesReader.reloadSynonymRules();
+                SynonymRuleManager.getSingleton().reloadSynonymMap(newRules);
             }
         } catch (Exception e) {
             logger.error("Failed to reload synonym rule!", e);

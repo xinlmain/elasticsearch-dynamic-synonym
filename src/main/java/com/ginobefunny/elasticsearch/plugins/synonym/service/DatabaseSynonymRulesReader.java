@@ -33,11 +33,14 @@ public class DatabaseSynonymRulesReader implements SynonymRulesReader {
     }
 
     @Override
-    public List<String> reloadSynonymRules() {
+    public String reloadSynonymRules() {
         try {
             //TODO: here we assume the reloading is always successful, which is not.
             lastUpdateVersion = currentMaxVersion;
-            return JDBCUtils.querySynonymRules(dbUrl, currentMaxVersion);
+
+            //TODO: 重新的设计要求返回整个文本而非分行。数据库可能要简化设计，或者把各行拼起来。
+            return null;
+            //return JDBCUtils.querySynonymRules(dbUrl, currentMaxVersion);
         } catch (Exception e) {
             e.printStackTrace();
             return null;

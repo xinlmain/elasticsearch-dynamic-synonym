@@ -15,8 +15,12 @@ package com.ginobefunny.elasticsearch.plugins.synonym.service;
 
 import com.ginobefunny.elasticsearch.plugins.synonym.service.utils.Monitor;
 import org.apache.logging.log4j.Logger;
+import org.apache.lucene.analysis.synonym.SolrSynonymParser;
+import org.apache.lucene.analysis.synonym.SynonymMap;
 import org.elasticsearch.common.logging.ESLoggerFactory;
 
+import java.io.Reader;
+import java.io.StringReader;
 import java.util.List;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -43,7 +47,11 @@ public class SynonymRuleManager {
 
     private Configuration configuration;
 
-    private SimpleSynonymMap synonymMap;
+    // 自己实现的SynonymMap, 使用简单的HashMap，不能去重。
+    private SimpleSynonymMap simpleSynonymMap;
+
+    // lucene的SynonyMap
+    private SynonymMap synonymMap;
 
     SynonymRulesReader synonymRulesReader;
 
@@ -57,7 +65,7 @@ public class SynonymRuleManager {
 
                     //TODO: 根据index配置判断使用db还是远程服务，这里写死了远程服务。
                     //singleton.synonymRulesReader = new DatabaseSynonymRulesReader(cfg.getDBUrl());
-                    singleton.reloadSynonymRule(singleton.synonymRulesReader.reloadSynonymRules());
+                    singleton.reloadSynonymMap(singleton.synonymRulesReader.reloadSynonymRules());
                     executorService.scheduleWithFixedDelay(new Monitor(singleton.synonymRulesReader), 1,
                         cfg.getInterval(), TimeUnit.SECONDS);
                 }
@@ -74,34 +82,40 @@ public class SynonymRuleManager {
         return singleton;
     }
 
-    public List<String> getSynonymWords(String inputToken) {
-        if (this.synonymMap == null) {
-            return null;
-        }
-
-        return this.synonymMap.getSynonymWords(inputToken);
+    public SynonymMap getSynonymMap() {
+        return this.synonymMap;
     }
 
-    public boolean reloadSynonymRule(List<String> rules) {
-        LOGGER.info("Start to reload synonym rule...");
-        if (rules == null || rules.size() == 0) {
-            LOGGER.error("synonym rule is empty, return...");
-            return false;
-        }
-        boolean reloadResult = true;
+
+    /**
+     * 重新加载全局 SynonymMap
+     * @param rulesText 同义词配置文本
+     * @return 成功或失败
+     */
+    public boolean reloadSynonymMap(String rulesText) {
+        Reader rulesReader = null;
         try {
-            SimpleSynonymMap tempSynonymMap = new SimpleSynonymMap(this.configuration);
-            for (String rule : rules) {
-                tempSynonymMap.addRule(rule);
+            LOGGER.info("start reloading synonym");
+            rulesReader = new StringReader(rulesText);
+            SolrSynonymParser parser = new SolrSynonymParser(true, true, this.configuration.getAnalyzer());
+
+            parser.parse(rulesReader);
+            SynonymMap synonymMap1 = parser.build();
+            if (synonymMap1 != null) {
+                this.synonymMap = synonymMap1;
+                return true;
             }
-
-            this.synonymMap = tempSynonymMap;
-            LOGGER.info("Succeeded to reload {} synonym rule!", rules.size());
-        } catch (Throwable t) {
-            LOGGER.error("Failed to reload synonym rule!", t);
-            reloadResult = false;
+        } catch (Exception e) {
+            LOGGER.error("reload remote synonym error! {}", e.getMessage());
+        } finally {
+            if (rulesReader != null) {
+                try {
+                    rulesReader.close();
+                } catch (Exception e) {
+                    LOGGER.error("failed to close rulesReader", e);
+                }
+            }
         }
-
-        return reloadResult;
+        return false;
     }
 }

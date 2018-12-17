@@ -9,12 +9,13 @@ import org.apache.http.impl.client.HttpClients;
 import org.apache.logging.log4j.Logger;
 import org.elasticsearch.common.logging.ESLoggerFactory;
 
-import java.io.*;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.Reader;
 import java.nio.charset.StandardCharsets;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
-import java.util.LinkedList;
-import java.util.List;
 
 public class RemoteSynonymRulesReader implements SynonymRulesReader {
 
@@ -88,8 +89,8 @@ public class RemoteSynonymRulesReader implements SynonymRulesReader {
     }
 
     @Override
-    public List<String> reloadSynonymRules() {
-        List<String> result = new LinkedList<>();
+    public String reloadSynonymRules() {
+        StringBuilder sb = new StringBuilder();
 
         RequestConfig rc = RequestConfig.custom()
             .setConnectionRequestTimeout(10 * 1000)
@@ -113,11 +114,12 @@ public class RemoteSynonymRulesReader implements SynonymRulesReader {
 
                 br = new BufferedReader(new InputStreamReader(response
                     .getEntity().getContent(), charset));
-                StringBuffer sb = new StringBuffer();
+
                 String line;
                 while ((line = br.readLine()) != null) {
                     logger.info("reloading remote synonym: {}", line);
-                    result.add(line);
+                    sb.append(line)
+                        .append(System.getProperty("line.separator"));
                 }
 
                 //TODO: here we assume the reloading is always successful, which is not.
@@ -137,7 +139,7 @@ public class RemoteSynonymRulesReader implements SynonymRulesReader {
             }
         }
 
-        return result;
+        return sb.toString();
     }
 
     private CloseableHttpResponse executeHttpRequest(HttpUriRequest httpUriRequest) {

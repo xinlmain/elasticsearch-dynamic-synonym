@@ -62,6 +62,6 @@ public class DynamicSynonymTokenFilterFactory extends AbstractTokenFilterFactory
 
     @Override
     public TokenStream create(TokenStream tokenStream) {
-        return new DynamicSynonymTokenFilter(tokenStream);
+        return new DynamicSynonymTokenFilter(tokenStream, false);
     }
 }
