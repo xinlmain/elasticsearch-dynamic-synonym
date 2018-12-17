@@ -45,8 +45,15 @@ public class DynamicSynonymTokenFilter extends TokenFilter {
 
     private int currentIndex = 0;
 
+    private SimpleSynonymMap map;
+
     public DynamicSynonymTokenFilter(TokenStream input) {
         super(input);
+    }
+
+    public DynamicSynonymTokenFilter(TokenStream input, SimpleSynonymMap map) {
+        super(input);
+        this.map = map;
     }
 
     @Override
@@ -59,7 +66,7 @@ public class DynamicSynonymTokenFilter extends TokenFilter {
             currentInput = new String(termAtt.buffer(), 0, termAtt.length());
             startOffset = offset.startOffset();
             endOffset = offset.endOffset();
-            currentWords = SynonymRuleManager.getSingleton().getSynonymWords(currentInput);
+            currentWords = map.getSynonymWords(currentInput); //SynonymRuleManager.getSingleton().getSynonymWords(currentInput);
             if (currentWords == null || currentWords.isEmpty()) {
                 currentInput = null;
 

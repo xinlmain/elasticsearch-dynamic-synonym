@@ -100,7 +100,8 @@ public class SimpleSynonymMap {
     }
 
     private Set<String> analyze(String text) throws IOException {
-        Set<String> result = new HashSet<String>();
+        // 至少保持顺序吧！
+        Set<String> result = new LinkedHashSet<>();
         Analyzer analyzer = configuration.getAnalyzer();
         try (TokenStream ts = analyzer.tokenStream("", text)) {
             CharTermAttribute termAtt = ts.addAttribute(CharTermAttribute.class);

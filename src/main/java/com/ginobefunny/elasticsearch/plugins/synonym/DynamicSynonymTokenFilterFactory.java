@@ -39,7 +39,7 @@ public class DynamicSynonymTokenFilterFactory extends AbstractTokenFilterFactory
 
         // get the filter setting params
         final boolean ignoreCase = settings.getAsBoolean("ignore_case", false);
-        final boolean expand = settings.getAsBoolean("expand", true);
+        final boolean expand = settings.getAsBoolean("expand", false);
         final String dbUrl = settings.get("db_url");
         final String remoteUrl = settings.get("synonyms_path");
         final Integer interval = settings.getAsInt("interval", 60);
