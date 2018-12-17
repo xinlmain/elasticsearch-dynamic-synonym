@@ -13,7 +13,6 @@
  */
 package com.ginobefunny.elasticsearch.plugins.synonym.service;
 
-import com.ginobefunny.elasticsearch.plugins.synonym.service.utils.JDBCUtils;
 import com.ginobefunny.elasticsearch.plugins.synonym.service.utils.Monitor;
 import org.apache.logging.log4j.Logger;
 import org.elasticsearch.common.logging.ESLoggerFactory;
@@ -29,9 +28,9 @@ import java.util.concurrent.TimeUnit;
  */
 public class SynonymRuleManager {
 
-    private static final Logger LOGGER = ESLoggerFactory.getLogger(Monitor.class.getName());
+    private static Logger LOGGER = ESLoggerFactory.getLogger("dynamic-synonym-manager");
 
-    private static final int DB_CHECK_URL = 60;
+    private static final int CHECK_SYNONYM_INTERVAL = 60;
 
     private static final ScheduledExecutorService executorService = Executors.newScheduledThreadPool(1, new ThreadFactory() {
         @Override
@@ -46,15 +45,21 @@ public class SynonymRuleManager {
 
     private SimpleSynonymMap synonymMap;
 
+    SynonymRulesReader synonymRulesReader;
+
     public static synchronized SynonymRuleManager initial(Configuration cfg) {
         if (singleton == null) {
             synchronized (SynonymRuleManager.class) {
                 if (singleton == null) {
                     singleton = new SynonymRuleManager();
                     singleton.configuration = cfg;
-                    long loadedMaxVersion = singleton.loadSynonymRule();
-                    executorService.scheduleWithFixedDelay(new Monitor(cfg, loadedMaxVersion), 1,
-                            DB_CHECK_URL, TimeUnit.SECONDS);
+                    singleton.synonymRulesReader = new RemoteSynonymRulesReader(cfg.getRemoteUrl());
+
+                    //TODO: 根据index配置判断使用db还是远程服务，这里写死了远程服务。
+                    //singleton.synonymRulesReader = new DatabaseSynonymRulesReader(cfg.getDBUrl());
+                    singleton.reloadSynonymRule(singleton.synonymRulesReader.reloadSynonymRules());
+                    executorService.scheduleWithFixedDelay(new Monitor(singleton.synonymRulesReader), 1,
+                        cfg.getInterval(), TimeUnit.SECONDS);
                 }
             }
         }
@@ -64,7 +69,7 @@ public class SynonymRuleManager {
 
     public static SynonymRuleManager getSingleton() {
         if (singleton == null) {
-            throw new IllegalStateException("Please initial first.");
+            throw new IllegalStateException("Please initialize first.");
         }
         return singleton;
     }
@@ -77,38 +82,21 @@ public class SynonymRuleManager {
         return this.synonymMap.getSynonymWords(inputToken);
     }
 
-    private long loadSynonymRule() {
-        try {
-            long currentMaxVersion = JDBCUtils.queryMaxSynonymRuleVersion(configuration.getDBUrl());
-            List<String> synonymRuleList = JDBCUtils.querySynonymRules(configuration.getDBUrl(), currentMaxVersion);
-            this.synonymMap = new SimpleSynonymMap(this.configuration);
-            for (String rule : synonymRuleList) {
-                this.synonymMap.addRule(rule);
-            }
-
-            LOGGER.info("Load {} synonym rule succeed!", synonymRuleList.size());
-            return currentMaxVersion;
-        } catch (Exception e) {
-            LOGGER.error("Load synonym rule failed!", e);
-            //throw new RuntimeException(e);
-            return 0L;
-        }
-    }
-
-    public boolean reloadSynonymRule(long maxVersion) {
+    public boolean reloadSynonymRule(List<String> rules) {
         LOGGER.info("Start to reload synonym rule...");
+        if (rules == null || rules.size() == 0) {
+            LOGGER.error("synonym rule is empty, return...");
+            return false;
+        }
         boolean reloadResult = true;
         try {
-            SynonymRuleManager tmpManager = new SynonymRuleManager();
-            tmpManager.configuration = getSingleton().configuration;
-            List<String> synonymRuleList = JDBCUtils.querySynonymRules(configuration.getDBUrl(), maxVersion);
-            SimpleSynonymMap tempSynonymMap = new SimpleSynonymMap(tmpManager.configuration);
-            for (String rule : synonymRuleList) {
+            SimpleSynonymMap tempSynonymMap = new SimpleSynonymMap(this.configuration);
+            for (String rule : rules) {
                 tempSynonymMap.addRule(rule);
             }
 
             this.synonymMap = tempSynonymMap;
-            LOGGER.info("Succeed to reload {} synonym rule!", synonymRuleList.size());
+            LOGGER.info("Succeeded to reload {} synonym rule!", rules.size());
         } catch (Throwable t) {
             LOGGER.error("Failed to reload synonym rule!", t);
             reloadResult = false;

@@ -15,36 +15,34 @@ package com.ginobefunny.elasticsearch.plugins.synonym.service.utils;
 
 import com.ginobefunny.elasticsearch.plugins.synonym.service.Configuration;
 import com.ginobefunny.elasticsearch.plugins.synonym.service.SynonymRuleManager;
+import com.ginobefunny.elasticsearch.plugins.synonym.service.SynonymRulesReader;
 import org.apache.logging.log4j.Logger;
 import org.elasticsearch.common.logging.ESLoggerFactory;
+
+import java.util.List;
 
 /**
  * Created by ginozhang on 2017/1/12.
  */
 public class Monitor implements Runnable {
 
-    private static final Logger LOGGER = ESLoggerFactory.getLogger(Monitor.class.getName());
+    private static Logger logger = ESLoggerFactory.getLogger("dynamic-synonym");
 
-    private Configuration configuration;
+    private SynonymRulesReader rulesReader;
 
-    private long lastUpdateVersion;
-
-    public Monitor(Configuration cfg, long initialVersion) {
-        this.configuration = cfg;
-        this.lastUpdateVersion = initialVersion;
+    public Monitor(SynonymRulesReader reader) {
+        this.rulesReader = reader;
     }
 
     @Override
     public void run() {
         try {
-            long currentMaxVersion = JDBCUtils.queryMaxSynonymRuleVersion(configuration.getDBUrl());
-            if (currentMaxVersion > lastUpdateVersion) {
-                if (SynonymRuleManager.getSingleton().reloadSynonymRule(currentMaxVersion)) {
-                    lastUpdateVersion = currentMaxVersion;
-                }
+            if (rulesReader.isNeedReloadSynonymRules()) {
+                List<String> newRules = rulesReader.reloadSynonymRules();
+                SynonymRuleManager.getSingleton().reloadSynonymRule(newRules);
             }
         } catch (Exception e) {
-            LOGGER.error("Failed to reload synonym rule!", e);
+            logger.error("Failed to reload synonym rule!", e);
         }
     }
 

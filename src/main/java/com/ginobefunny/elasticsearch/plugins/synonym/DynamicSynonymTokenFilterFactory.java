@@ -18,14 +18,16 @@ import com.ginobefunny.elasticsearch.plugins.synonym.service.DynamicSynonymToken
 import com.ginobefunny.elasticsearch.plugins.synonym.service.SynonymRuleManager;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.TokenStream;
-import org.apache.lucene.analysis.core.KeywordAnalyzer;
-import org.apache.lucene.analysis.core.SimpleAnalyzer;
-import org.apache.lucene.analysis.core.WhitespaceAnalyzer;
+import org.apache.lucene.analysis.Tokenizer;
+import org.apache.lucene.analysis.core.*;
 import org.apache.lucene.analysis.standard.StandardAnalyzer;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.env.Environment;
 import org.elasticsearch.index.IndexSettings;
 import org.elasticsearch.index.analysis.AbstractTokenFilterFactory;
+import org.elasticsearch.index.analysis.AnalysisRegistry;
+import org.elasticsearch.index.analysis.TokenizerFactory;
+import org.elasticsearch.indices.analysis.AnalysisModule;
 
 import java.io.IOException;
 
@@ -39,10 +41,12 @@ public class DynamicSynonymTokenFilterFactory extends AbstractTokenFilterFactory
         final boolean ignoreCase = settings.getAsBoolean("ignore_case", false);
         final boolean expand = settings.getAsBoolean("expand", true);
         final String dbUrl = settings.get("db_url");
+        final String remoteUrl = settings.get("synonyms_path");
+        final Integer interval = settings.getAsInt("interval", 60);
         final String tokenizerName = settings.get("tokenizer", "whitespace");
 
         Analyzer analyzer;
-        if ("standand".equalsIgnoreCase(tokenizerName)) {
+        if ("standard".equalsIgnoreCase(tokenizerName)) {
             analyzer = new StandardAnalyzer();
         } else if ("keyword".equalsIgnoreCase(tokenizerName)) {
             analyzer = new KeywordAnalyzer();
@@ -53,7 +57,7 @@ public class DynamicSynonymTokenFilterFactory extends AbstractTokenFilterFactory
         }
 
         // NOTE: the manager will only init once
-        SynonymRuleManager.initial(new Configuration(ignoreCase, expand, analyzer, dbUrl));
+        SynonymRuleManager.initial(new Configuration(ignoreCase, expand, analyzer, dbUrl, remoteUrl, interval));
     }
 
     @Override

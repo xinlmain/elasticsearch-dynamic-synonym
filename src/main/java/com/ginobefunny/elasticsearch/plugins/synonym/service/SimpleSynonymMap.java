@@ -30,7 +30,7 @@ import java.util.*;
  */
 public class SimpleSynonymMap {
 
-    private static final Logger LOGGER = ESLoggerFactory.getLogger(Monitor.class.getName());
+    private static Logger LOGGER = ESLoggerFactory.getLogger("dynamic-synonym");
 
     private Map<String, List<String>> ruleMap = new HashMap<String, List<String>>();
 

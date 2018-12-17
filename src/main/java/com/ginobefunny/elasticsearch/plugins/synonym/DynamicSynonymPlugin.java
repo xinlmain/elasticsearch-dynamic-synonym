@@ -31,7 +31,7 @@ import java.util.Map;
 public class DynamicSynonymPlugin extends Plugin implements AnalysisPlugin {
 
     /** Plugin name **/
-    public static final String PLUGIN_NAME = "dynamic-synonym";
+    public static final String PLUGIN_NAME = "dynamic_synonym";
 
     @Override
     public Map<String, AnalysisModule.AnalysisProvider<TokenFilterFactory>> getTokenFilters() {

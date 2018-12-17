@@ -26,13 +26,19 @@ public class Configuration {
 
     private final String dbUrl;
 
+    private final String remoteUrl;
+
     private final Analyzer analyzer;
 
-    public Configuration(boolean ignoreCase, boolean expand, Analyzer analyzer, String dbUrl) {
+    private final Integer interval;
+
+    public Configuration(boolean ignoreCase, boolean expand, Analyzer analyzer, String dbUrl, String remoteUrl, Integer interval) {
         this.ignoreCase = ignoreCase;
         this.expand = expand;
         this.analyzer = analyzer;
         this.dbUrl = dbUrl;
+        this.remoteUrl = remoteUrl;
+        this.interval = interval;
     }
 
     public Analyzer getAnalyzer() {
@@ -49,5 +55,13 @@ public class Configuration {
 
     public String getDBUrl() {
         return dbUrl;
+    }
+
+    public String getRemoteUrl() {
+        return remoteUrl;
+    }
+
+    public Integer getInterval() {
+        return interval;
     }
 }
